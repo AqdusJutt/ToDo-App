@@ -1,4 +1,3 @@
-// Dashboard.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,10 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { todoService, Todo } from "@/services/todoService";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { supabase, setSupabaseAuth } from "@/lib/supabase";
 
 export default function Dashboard() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -17,7 +14,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState("");
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -27,16 +23,7 @@ export default function Dashboard() {
       loadTodos();
       fetchUserData(user.uid);
 
-      const syncAuth = async () => {
-        try {
-          const token = await user.getIdToken();
-          await setSupabaseAuth(token);
-        } catch (error) {
-          console.error("Error syncing Firebase and Supabase auth:", error);
-        }
-      };
-      syncAuth();
-
+      // Set the client-side date to prevent hydration mismatch
       setCurrentDate(
         new Date().toLocaleDateString("en-US", {
           weekday: "long",
@@ -48,24 +35,28 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  /**
+   * Fetches user's display name from Firestore.
+   * @param {string} uid - The user's unique ID.
+   */
   const fetchUserData = async (uid: string) => {
     try {
       const userDoc = await getDoc(doc(db, "users", uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setDisplayName(userData.name || null);
-        setProfilePicUrl(userData.profilePicUrl || null);
       } else {
         setDisplayName(null);
-        setProfilePicUrl(null);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
       setDisplayName(null);
-      setProfilePicUrl(null);
     }
   };
 
+  /**
+   * Loads todos for the current user from Firestore.
+   */
   const loadTodos = async () => {
     if (!user?.uid) {
       console.log("No user UID found");
@@ -83,16 +74,18 @@ export default function Dashboard() {
     }
   };
 
+  /**
+   * Adds a new todo item to Firestore without using Gemini.
+   */
   const addTodo = async () => {
     if (!newTodo.trim() || !user?.uid) return;
 
     try {
       setSubmitting(true);
-      await todoService.createTodo({
-        text: newTodo.trim(),
-        completed: false,
-        userId: user.uid,
-      });
+      
+      // Use the todoService function to create the new todo
+      await todoService.createTodo(newTodo, user.uid);
+      
       setNewTodo("");
       await loadTodos();
     } catch (error) {
@@ -102,6 +95,11 @@ export default function Dashboard() {
     }
   };
 
+  /**
+   * Toggles the completion status of a todo item in Firestore.
+   * @param {string} id - The ID of the todo item.
+   * @param {boolean} completed - The current completion status.
+   */
   const toggleTodo = async (id: string, completed: boolean) => {
     try {
       await todoService.toggleTodo(id, !completed);
@@ -111,6 +109,10 @@ export default function Dashboard() {
     }
   };
 
+  /**
+   * Deletes a todo item from Firestore.
+   * @param {string} id - The ID of the todo item.
+   */
   const deleteTodo = async (id: string) => {
     try {
       await todoService.deleteTodo(id);
@@ -120,6 +122,9 @@ export default function Dashboard() {
     }
   };
 
+  /**
+   * Handles user logout.
+   */
   const handleLogout = async () => {
     try {
       await logout();
@@ -129,52 +134,21 @@ export default function Dashboard() {
     }
   };
 
+  /**
+   * Handles key press events for the new todo input (e.g., Enter to add).
+   * @param {React.KeyboardEvent} e - The keyboard event.
+   */
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !submitting) {
       addTodo();
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user?.uid) return;
-
-    try {
-      setSubmitting(true);
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `${user.uid}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("todo") // <-- Updated here
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error("Supabase upload failed:", uploadError);
-        throw uploadError;
-      }
-
-      const { data: publicUrlData, error: publicUrlError } = supabase.storage
-        .from("todo") // <-- Updated here
-        .getPublicUrl(filePath);
-
-      if (publicUrlError) {
-        console.error("Failed to get public URL:", publicUrlError);
-        throw publicUrlError;
-      }
-
-      const downloadURL = publicUrlData.publicUrl;
-
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { profilePicUrl: downloadURL });
-
-      setProfilePicUrl(downloadURL);
-    } catch (error) {
-      console.error("An error occurred during image upload:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+  /**
+   * Formats a Firestore timestamp or date string into a readable format.
+   * @param {unknown} timestamp - The timestamp or date string.
+   * @returns {string} The formatted date string.
+   */
   const formatDate = (timestamp: unknown) => {
     if (!timestamp) return "";
     const date =
@@ -193,40 +167,24 @@ export default function Dashboard() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="container mx-auto px-4 py-8">
+          {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-4">
+              {/* Profile Picture Placeholder */}
               <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                {profilePicUrl ? (
-                  <img
-                    src={profilePicUrl}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <svg
-                    className="w-full h-full text-gray-400"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M24 20.993V24H0v-3.007a.999.999 0 011-1h22a.999.999 0 011 1zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4a4 4 0 100 8 4 4 0 000-8z" />
-                  </svg>
-                )}
+                <svg
+                  className="w-full h-full text-gray-400"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M24 20.993V24H0v-3.007a.999.999 0 011-1h22a.999.999 0 011 1zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
                   Welcome back, {displayName ? displayName : user?.email}!
                 </h1>
                 <p className="text-gray-600">{currentDate}</p>
-                <label className="cursor-pointer text-sm text-blue-500 hover:text-blue-600 transition-colors mt-2 block">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={submitting}
-                  />
-                  {submitting ? "Uploading..." : "Change Profile Picture"}
-                </label>
               </div>
             </div>
             <button
@@ -237,6 +195,7 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* Add Todo Form */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               Add New Task
@@ -248,7 +207,7 @@ export default function Dashboard() {
                 onChange={(e) => setNewTodo(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="What do you need to do today?"
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-green-700"
                 disabled={submitting}
               />
               <button
@@ -261,6 +220,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Todo List */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               Your Tasks ({todos.filter((t) => !t.completed).length} remaining)
@@ -333,6 +293,7 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Stats */}
           {todos.length > 0 && (
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg shadow-md p-4 text-center">
