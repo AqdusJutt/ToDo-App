@@ -78,20 +78,20 @@ export default function Home() {
 
   return (
     <div 
-      className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: `url('/background.png')` }} // Using the uploaded image
+      className="relative min-h-screen flex items-center justify-center bg-cover bg-center p-4"
+      style={{ backgroundImage: `url('/background.png')` }}
     >
       {/* Overlay */}
       <div className="absolute inset-0 bg-black opacity-60"></div>
 
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10">
+      <header className="absolute top-0 left-0 right-0 p-4 md:p-6 flex justify-between items-center z-10">
         <div className="flex items-center gap-2">
           <TodoIcon />
           <span className="text-white text-xl font-bold">TODO</span>
         </div>
         <nav>
-          <ul className="flex space-x-6 text-lg">
+          <ul className="flex items-center space-x-3 sm:space-x-6 text-sm sm:text-base">
             <li>
               <button 
                 onClick={() => setIsSignUp(false)} 
@@ -108,16 +108,15 @@ export default function Home() {
                 Register
               </button>
             </li>
-            <li><a href="#" className="text-white hover:text-red-400 transition-colors">About Us</a></li>
-            <li><a href="#" className="text-white hover:text-red-400 transition-colors">Contact</a></li>
+            <li className="hidden md:block"><a href="#" className="text-white hover:text-red-400 transition-colors">About Us</a></li>
+            <li className="hidden md:block"><a href="#" className="text-white hover:text-red-400 transition-colors">Contact</a></li>
           </ul>
         </nav>
       </header>
 
       {/* Main Content (Login/Sign Up Form) */}
-      <div className="relative bg-white p-10 rounded-lg shadow-2xl w-full max-w-md z-10">
+      <div className="relative bg-white p-6 sm:p-10 rounded-lg shadow-2xl w-full max-w-md z-10">
         
-        {/* UPDATED THIS SECTION TO USE YOUR IMAGE */}
         <div className="flex justify-center mb-6">
           <img
             src="/icons/icon.png"
@@ -125,8 +124,6 @@ export default function Home() {
             className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
           />
         </div>
-
-        {/* The code below this point is for the form itself */}
 
         {!user && (
           <>
@@ -202,14 +199,14 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 p-6 flex justify-between items-center z-10 text-gray-400 text-sm">
+      <footer className="absolute bottom-0 left-0 right-0 p-4 flex flex-col md:flex-row justify-between items-center z-10 text-gray-400 text-sm gap-4 md:gap-0">
         {/* LEFT SIDE */}
         <div className="flex gap-4">
           <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
           <a href="#" className="hover:text-white transition-colors">Terms Of Use</a>
         </div>
         {/* RIGHT SIDE */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center flex-col sm:flex-row gap-4">
            <span>© 2025 Key. All Rights Reserved | Design By STAUMZ</span>
             <div className="flex space-x-3">
               {/* Placeholder Social Icons */}
