@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// import { useAuth } from "@/contexts/AuthContext"; // Assuming you will use this later
+import { useAuth } from "@/contexts/AuthContext"; // Re-enabled this import
 
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false); // Toggles between Login and Create Account form
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  // const { user, signIn, signUp } = useAuth(); // You can uncomment this when your AuthContext is ready
-  const user = null; // Placeholder for user object
+  const { user, signIn, signUp } = useAuth(); // Re-enabled this line
 
   const handleSubmit = async () => {
+    // 1. Validation Checks (These are good)
     if (!email || !password || (isSignUp && !name)) {
       setError("Please enter all required fields.");
       return;
@@ -25,11 +25,30 @@ export default function Home() {
       setError("Password must be at least 6 characters.");
       return;
     }
+
     setLoading(true);
     setError("");
-    // Your signIn/signUp logic would go here
-    console.log("Form submitted");
-    setTimeout(() => setLoading(false), 1500); // Simulate API call
+
+    // 2. The Core Logic - TRY/CATCH BLOCK RESTORED
+    try {
+      if (isSignUp) {
+        // If it's a new user, call the signUp function
+        await signUp(email, password, name);
+      } else {
+        // If it's an existing user, call the signIn function
+        await signIn(email, password);
+      }
+      // 3. Redirect on Success - THIS IS THE KEY PART
+      router.push("/dashboard");
+
+    } catch (error: unknown) {
+      // If Firebase returns an error, display it
+      const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
+      setError(errorMessage);
+    } finally {
+      // 4. Stop the loading indicator
+      setLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -125,6 +144,20 @@ export default function Home() {
           />
         </div>
 
+        {/* User is already logged in message */}
+        {user && (
+          <div className="text-center">
+            <p className="text-gray-700">Welcome, you are already logged in as {user.email}.</p>
+            <button 
+              onClick={() => router.push('/dashboard')}
+              className="mt-4 text-red-600 hover:underline"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
+
+        {/* Form fields */}
         {!user && (
           <>
             {isSignUp && (
@@ -175,7 +208,7 @@ export default function Home() {
               disabled={loading}
               className="w-full bg-red-600 text-white py-3 rounded-md font-bold text-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Loading..." : "GET STARTED"}
+              {loading ? (isSignUp ? "Creating Account..." : "Logging In...") : (isSignUp ? "Create Account" : "Login")}
             </button>
 
             <div className="text-right text-sm mt-4">
