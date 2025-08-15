@@ -1,41 +1,43 @@
-// app/api/admin/users/route.ts
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { admin } from '@/lib/firebase-admin'; // Assuming you have a firebase-admin config
 
 export async function GET(request: Request) {
-  const authorizationHeader = request.headers.get('Authorization');
-  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
-  }
-
-  const idToken = authorizationHeader.split('Bearer ')[1];
-
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    
-    // --- ADD THESE LOGS ---
-    console.log("Decoded Token Email:", decodedToken.email);
-    console.log("Is Admin Email?:", decodedToken.email === "your-admin-email@example.com");
-    // --- END LOGS ---
-
-    // Make sure this email exactly matches the email you logged in with
-    const adminEmails = ["admin@gmail.com"]; // REPLACE with your actual admin emails
-    
-    if (!adminEmails.includes(decodedToken.email as string)) {
-        return NextResponse.json({ error: 'Forbidden: Not an admin' }, { status: 403 });
+    // 1. Verify the user is an admin from their token
+    const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+    if (userDoc.data()?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const allUsers = await adminAuth.listUsers();
-    const usersData = allUsers.users.map(user => ({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      creationTime: user.metadata.creationTime,
-    }));
+    // 2. Get the status filter from the URL (e.g., /api/admin/users?status=active)
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') || 'active'; // Default to 'active'
 
-    return NextResponse.json(usersData);
+    // 3. Query Firestore based on the status
+    const usersCollection = admin.firestore().collection('users');
+    const snapshot = await usersCollection.where('status', '==', status).get();
+    
+    const users = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // Fallback for users who might not have a creationTime
+        const creationTime = data.creationTime || new Date().toISOString();
+        return {
+            uid: doc.id,
+            displayName: data.name || 'No Name',
+            email: data.email,
+            creationTime: new Date(creationTime).toLocaleDateString(),
+        };
+    });
+
+    return NextResponse.json(users);
+
   } catch (error) {
-    console.error('Error fetching users in API route:', error);
-    return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    console.error('Error fetching users:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
