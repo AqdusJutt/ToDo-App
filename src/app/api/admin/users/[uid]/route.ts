@@ -4,9 +4,9 @@ import { admin } from '@/lib/firebase-admin';
 // Function to "delete" (archive) a user
 export async function DELETE(
     request: Request, 
-    context: { params: { uid: string } } // CORRECTED arugment type
+    context: { params: { uid: string } } 
 ) {
-  const userUidToDelete = context.params.uid; // CORRECTED how we get the uid
+  const userUidToDelete = context.params.uid;
 
   try {
     // Verify admin privileges (important for security)
@@ -38,9 +38,9 @@ export async function DELETE(
 // Function to "restore" a user
 export async function PUT(
     request: Request, 
-    context: { params: { uid: string } } // CORRECTED argument type
+    context: { params: { uid: string } }
 ) {
-  const userUidToRestore = context.params.uid; // CORRECTED how we get the uid
+  const userUidToRestore = context.params.uid;
 
   try {
     // Verify admin privileges
@@ -48,7 +48,7 @@ export async function PUT(
     if (!idToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const decodedToken = await admin.auth().verifyIdToken(idToken!);
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
     const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     if (adminUserDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
