@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import { admin } from '@/lib/firebase-admin';
 
 // Function to "delete" (archive) a user
-export async function DELETE(request: Request, { params }: { params: { uid: string } }) {
-  const userUidToDelete = params.uid;
+export async function DELETE(
+    request: Request, 
+    context: { params: { uid: string } } // CORRECTED arugment type
+) {
+  const userUidToDelete = context.params.uid; // CORRECTED how we get the uid
 
   try {
     // Verify admin privileges (important for security)
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(idToken!);
+    if (!idToken) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
     const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     if (adminUserDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -30,12 +36,18 @@ export async function DELETE(request: Request, { params }: { params: { uid: stri
 }
 
 // Function to "restore" a user
-export async function PUT(request: Request, { params }: { params: { uid: string } }) {
-  const userUidToRestore = params.uid;
+export async function PUT(
+    request: Request, 
+    context: { params: { uid: string } } // CORRECTED argument type
+) {
+  const userUidToRestore = context.params.uid; // CORRECTED how we get the uid
 
   try {
     // Verify admin privileges
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const decodedToken = await admin.auth().verifyIdToken(idToken!);
     const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     if (adminUserDoc.data()?.role !== 'admin') {
