@@ -24,7 +24,7 @@ export async function DELETE(
     await admin.firestore().collection('users').doc(userUidToDelete).update({
       status: 'archived',
     });
-    
+
     // 2. Disable the user in Firebase Auth so they cannot log in
     await admin.auth().updateUser(userUidToDelete, { disabled: true });
 
