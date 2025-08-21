@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { admin } from '@/lib/firebase-admin'; // Assuming you have a firebase-admin config
+import { admin } from '@/lib/firebase-admin';
 
 export async function GET(request: Request) {
   try {
@@ -24,13 +24,14 @@ export async function GET(request: Request) {
     
     const users = snapshot.docs.map(doc => {
         const data = doc.data();
-        // Fallback for users who might not have a creationTime
-        const creationTime = data.creationTime || new Date().toISOString();
+        // CORRECTED LINE: Looks for 'createdAt' to match AuthContext
+        const creationTimestamp = data.createdAt || new Date(); 
         return {
             uid: doc.id,
             displayName: data.name || 'No Name',
             email: data.email,
-            creationTime: new Date(creationTime).toLocaleDateString(),
+            // Formats the date consistently
+            creationTime: new Date(creationTimestamp.toDate()).toLocaleDateString(),
         };
     });
 

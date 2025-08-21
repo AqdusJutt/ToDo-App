@@ -45,10 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
+      // Create a corresponding user document in Firestore with status and role
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         name,
         email,
         createdAt: new Date(),
+        status: 'active', // <-- This is the important addition
+        role: 'user'      // <-- This is the important addition
       });
     } catch (error) {
       throw error;

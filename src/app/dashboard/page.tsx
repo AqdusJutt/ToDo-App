@@ -1,323 +1,175 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { todoService, Todo } from "@/services/todoService";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { 
+    collection, 
+    query, 
+    where, 
+    onSnapshot, 
+    doc, 
+    updateDoc, 
+    orderBy,
+    addDoc,
+    deleteDoc,
+    serverTimestamp,
+    Timestamp
+} from 'firebase/firestore';
+
+// Interface for Admin-Assigned Tasks
+interface AssignedTask {
+    id: string;
+    title: string;
+    description: string;
+    deadline: { seconds: number; };
+    status: 'Pending' | 'Completed';
+}
+
+// Interface for Personal To-Dos
+interface PersonalTodo {
+    id: string;
+    text: string;
+    completed: boolean;
+}
 
 export default function Dashboard() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [newTodo, setNewTodo] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [currentDate, setCurrentDate] = useState("");
-  const router = useRouter();
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
+    const router = useRouter();
+    const [assignedTasks, setAssignedTasks] = useState<AssignedTask[]>([]);
+    const [personalTodos, setPersonalTodos] = useState<PersonalTodo[]>([]);
+    const [newTodoText, setNewTodoText] = useState("");
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadTodos();
-      fetchUserData(user.uid);
+    useEffect(() => {
+        if (!user) {
+            router.push('/');
+            return;
+        }
 
-      // Set the client-side date to prevent hydration mismatch
-      setCurrentDate(
-        new Date().toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      );
+        // --- Listener for PERSONAL todos (logic is now directly in this file) ---
+        const personalTodosQuery = query(collection(db, `users/${user.uid}/todos`), orderBy("createdAt", "desc"));
+        const unsubscribePersonal = onSnapshot(personalTodosQuery, (snapshot) => {
+            const todos: PersonalTodo[] = [];
+            snapshot.forEach((doc) => {
+                todos.push({ id: doc.id, ...doc.data() } as PersonalTodo);
+            });
+            setPersonalTodos(todos);
+            setLoading(false); 
+        });
+
+        // --- Listener for ADMIN-ASSIGNED tasks ---
+        const assignedTasksQuery = query(collection(db, "tasks"), where("assignedToUid", "==", user.uid), orderBy("createdAt", "desc"));
+        const unsubscribeAssigned = onSnapshot(assignedTasksQuery, (snapshot) => {
+            const tasks: AssignedTask[] = [];
+            snapshot.forEach((doc) => {
+                tasks.push({ id: doc.id, ...doc.data() } as AssignedTask);
+            });
+            setAssignedTasks(tasks);
+        });
+
+        // Cleanup both listeners
+        return () => {
+            unsubscribePersonal();
+            unsubscribeAssigned();
+        };
+
+    }, [user, router]);
+    
+    // --- ALL LOGIC IS NOW IN THIS ONE FILE ---
+
+    const handleToggleAssignedTask = async (taskId: string, currentStatus: 'Pending' | 'Completed') => {
+        const newStatus = currentStatus === 'Pending' ? 'Completed' : 'Pending';
+        const taskRef = doc(db, "tasks", taskId);
+        await updateDoc(taskRef, { status: newStatus });
+    };
+    
+    const addPersonalTodo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newTodoText.trim() === '' || !user) return;
+        await addDoc(collection(db, `users/${user.uid}/todos`), {
+            text: newTodoText,
+            completed: false,
+            createdAt: serverTimestamp(),
+        });
+        setNewTodoText('');
+    };
+
+    const togglePersonalTodo = async (todo: PersonalTodo) => {
+        if (!user || !todo.id) return;
+        const todoRef = doc(db, `users/${user.uid}/todos`, todo.id);
+        await updateDoc(todoRef, { completed: !todo.completed });
+    };
+
+    const deletePersonalTodo = async (todoId: string) => {
+        if (!user || !todoId) return;
+        const todoRef = doc(db, `users/${user.uid}/todos`, todoId);
+        await deleteDoc(todoRef);
+    };
+
+    const handleLogout = async () => { await logout(); router.push('/'); };
+    
+    const formatDate = (timestamp: { seconds: number }) => {
+        if (!timestamp) return 'No Deadline';
+        return new Date(timestamp.seconds * 1000).toLocaleDateString();
+    };
+
+    if (loading) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>;
     }
-  }, [user]);
-
-  /**
-   * Fetches user's display name from Firestore.
-   * @param {string} uid - The user's unique ID.
-   */
-  const fetchUserData = async (uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, "users", uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setDisplayName(userData.name || null);
-      } else {
-        setDisplayName(null);
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      setDisplayName(null);
-    }
-  };
-
-  /**
-   * Loads todos for the current user from Firestore.
-   */
-  const loadTodos = async () => {
-    if (!user?.uid) {
-      console.log("No user UID found");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const userTodos = await todoService.getTodos(user.uid);
-      setTodos(userTodos);
-    } catch (error) {
-      console.error("Error loading todos:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Adds a new todo item to Firestore without using Gemini.
-   */
-  const addTodo = async () => {
-    if (!newTodo.trim() || !user?.uid) return;
-
-    try {
-      setSubmitting(true);
-      
-      // Use the todoService function to create the new todo
-      await todoService.createTodo(newTodo, user.uid);
-      
-      setNewTodo("");
-      await loadTodos();
-    } catch (error) {
-      console.error("Error adding todo:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /**
-   * Toggles the completion status of a todo item in Firestore.
-   * @param {string} id - The ID of the todo item.
-   * @param {boolean} completed - The current completion status.
-   */
-  const toggleTodo = async (id: string, completed: boolean) => {
-    try {
-      await todoService.toggleTodo(id, !completed);
-      await loadTodos();
-    } catch (error) {
-      console.error("Error toggling todo:", error);
-    }
-  };
-
-  /**
-   * Deletes a todo item from Firestore.
-   * @param {string} id - The ID of the todo item.
-   */
-  const deleteTodo = async (id: string) => {
-    try {
-      await todoService.deleteTodo(id);
-      await loadTodos();
-    } catch (error) {
-      console.error("Error deleting todo:", error);
-    }
-  };
-
-  /**
-   * Handles user logout.
-   */
-  const handleLogout = async () => {
-    try {
-      await logout();
-      router.push("/");
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
-  };
-
-  /**
-   * Handles key press events for the new todo input (e.g., Enter to add).
-   * @param {React.KeyboardEvent} e - The keyboard event.
-   */
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !submitting) {
-      addTodo();
-    }
-  };
-
-  /**
-   * Formats a Firestore timestamp or date string into a readable format.
-   * @param {unknown} timestamp - The timestamp or date string.
-   * @returns {string} The formatted date string.
-   */
-  const formatDate = (timestamp: unknown) => {
-    if (!timestamp) return "";
-    const date =
-      timestamp && typeof timestamp === "object" && "toDate" in timestamp
-        ? (timestamp as { toDate: () => Date }).toDate()
-        : new Date(timestamp as string | number);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-4">
-              {/* Profile Picture Placeholder */}
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                <svg
-                  className="w-full h-full text-gray-400"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M24 20.993V24H0v-3.007a.999.999 0 011-1h22a.999.999 0 011 1zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Welcome back, {displayName ? displayName : user?.email}!
-                </h1>
-                <p className="text-gray-600">{currentDate}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-
-          {/* Add Todo Form */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-              Add New Task
-            </h2>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTodo}
-                onChange={(e) => setNewTodo(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="What do you need to do today?"
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-green-700"
-                disabled={submitting}
-              />
-              <button
-                onClick={addTodo}
-                disabled={submitting || !newTodo.trim()}
-                className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? "Adding..." : "Add"}
-              </button>
-            </div>
-          </div>
-
-          {/* Todo List */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-              Your Tasks ({todos.filter((t) => !t.completed).length} remaining)
-            </h2>
-
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                <p className="text-gray-500 mt-2">Loading tasks...</p>
-              </div>
-            ) : todos.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-lg mb-2">No tasks yet!</p>
-                <p>Add your first task above to get started.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {todos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      todo.completed
-                        ? "bg-gray-50 border-gray-200"
-                        : "bg-white border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() => toggleTodo(todo.id!, todo.completed)}
-                        className="w-5 h-5 text-blue-500 rounded focus:ring-blue-400"
-                      />
-                      <div className="flex-1">
-                        <p
-                          className={`text-lg ${
-                            todo.completed
-                              ? "line-through text-gray-500"
-                              : "text-gray-800"
-                          }`}
-                        >
-                          {todo.text}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(todo.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => deleteTodo(todo.id!)}
-                      className="text-red-500 hover:text-red-700 transition-colors ml-4"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Stats */}
-          {todos.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                <p className="text-2xl font-bold text-blue-500">
-                  {todos.length}
-                </p>
-                <p className="text-gray-600">Total Tasks</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                <p className="text-2xl font-bold text-green-500">
-                  {todos.filter((t) => t.completed).length}
-                </p>
-                <p className="text-gray-600">Completed</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                <p className="text-2xl font-bold text-orange-500">
-                  {todos.filter((t) => !t.completed).length}
-                </p>
-                <p className="text-gray-600">Pending</p>
-              </div>
-            </div>
-          )}
+    
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <header className="bg-white shadow-sm">
+                <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-gray-800">Your Dashboard</h1>
+                    <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Logout</button>
+                </div>
+            </header>
+            <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <section>
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800 border-b-2 border-red-500 pb-2">Tasks Assigned to You</h2>
+                    {assignedTasks.length === 0 ? (<p className="text-gray-500 mt-4">You have no tasks assigned by an admin.</p>) : (
+                        <div className="space-y-4">
+                            {assignedTasks.map((task) => (
+                                <div key={task.id} className={`bg-white p-6 rounded-lg shadow-md border-l-4 ${task.status === 'Completed' ? 'border-green-500' : 'border-yellow-500'}`}>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className={`text-lg font-bold ${task.status === 'Completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>{task.title}</h3>
+                                            <p className="text-gray-600 mt-1">{task.description}</p>
+                                            <p className="text-sm text-red-600 font-semibold mt-2">Deadline: {formatDate(task.deadline)}</p>
+                                        </div>
+                                        <button onClick={() => handleToggleAssignedTask(task.id, task.status)} className={`px-3 py-1.5 text-sm font-semibold rounded-full text-white transition-colors ${task.status === 'Completed' ? 'bg-gray-400' : 'bg-green-500'}`}>{task.status === 'Completed' ? 'Mark as Pending' : 'Mark as Complete'}</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+                <section>
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800 border-b-2 border-blue-500 pb-2">Your Personal To-Do List</h2>
+                    <form onSubmit={addPersonalTodo} className="flex gap-2 mb-4">
+                        <input type="text" value={newTodoText} onChange={(e) => setNewTodoText(e.target.value)} className="flex-grow px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Add a new personal task..."/>
+                        <button type="submit" className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600">Add</button>
+                    </form>
+                    {personalTodos.length === 0 ? (<p className="text-gray-500 mt-4">You have no personal to-dos.</p>) : (
+                        <div className="space-y-3">
+                            {personalTodos.map(todo => (
+                                <div key={todo.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <input type="checkbox" checked={todo.completed} onChange={() => togglePersonalTodo(todo)} className="h-5 w-5 rounded text-blue-500 focus:ring-blue-500"/>
+                                        <p className={`text-gray-800 ${todo.completed ? 'line-through text-gray-400' : ''}`}>{todo.text}</p>
+                                    </div>
+                                    <button onClick={() => deletePersonalTodo(todo.id!)} className="text-gray-400 hover:text-red-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </main>
         </div>
-      </div>
-    </ProtectedRoute>
-  );
+    );
 }
