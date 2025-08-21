@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { admin } from "@/lib/firebase-admin";
 
-type Context = {
-  params: { uid: string };
-};
-
 // DELETE: Archive user
-export async function DELETE(req: NextRequest, context: Context) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: { uid: string } }
+) {
   const { uid } = context.params;
 
   try {
@@ -40,7 +39,10 @@ export async function DELETE(req: NextRequest, context: Context) {
 }
 
 // PUT: Restore user
-export async function PUT(req: NextRequest, context: Context) {
+export async function PUT(
+  req: NextRequest,
+  context: { params: { uid: string } } // ✅ keep inline, don't alias it
+) {
   const { uid } = context.params;
 
   try {

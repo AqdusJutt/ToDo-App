@@ -8,8 +8,10 @@ export async function GET(request: Request) {
     if (!idToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+
     if (userDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -21,22 +23,20 @@ export async function GET(request: Request) {
     // 3. Query Firestore based on the status
     const usersCollection = admin.firestore().collection('users');
     const snapshot = await usersCollection.where('status', '==', status).get();
-    
-    const users = snapshot.docs.map(doc => {
-        const data = doc.data();
-        // CORRECTED LINE: Looks for 'createdAt' to match AuthContext
-        const creationTimestamp = data.createdAt || new Date(); 
-        return {
-            uid: doc.id,
-            displayName: data.name || 'No Name',
-            email: data.email,
-            // Formats the date consistently
-            creationTime: new Date(creationTimestamp.toDate()).toLocaleDateString(),
-        };
+
+    const users = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const creationTimestamp = data.createdAt ? data.createdAt.toDate() : new Date();
+
+      return {
+        uid: doc.id,
+        displayName: data.name || 'No Name',
+        email: data.email,
+        creationTime: creationTimestamp.toLocaleDateString(),
+      };
     });
 
     return NextResponse.json(users);
-
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
