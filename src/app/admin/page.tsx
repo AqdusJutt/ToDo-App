@@ -12,6 +12,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { signIn } = useAuth();
 
+  // --- THIS FUNCTION HAS BEEN UPDATED ---
   const handleAdminLogin = async () => {
     if (!email || !password) {
       setError("Please enter both email and password.");
@@ -23,8 +24,13 @@ export default function AdminLoginPage() {
     try {
       await signIn(email, password);
       router.push("/admin/dashboard");
-    } catch (error: any) {
-      setError(error.message || "Failed to log in. Please check your credentials.");
+    } catch (error: unknown) { // Changed 'any' to 'unknown'
+      // Add a check to be sure it's a real error
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -64,7 +70,6 @@ export default function AdminLoginPage() {
           </button>
         </div>
 
-        {/* --- THIS IS THE NEW BUTTON I ADDED --- */}
         <div className="mt-6 text-center border-t border-gray-700 pt-4">
           <button
             onClick={() => router.push("/")}
@@ -73,8 +78,6 @@ export default function AdminLoginPage() {
             ← Back to User Login
           </button>
         </div>
-        {/* --- END OF NEW CODE --- */}
-
       </div>
     </div>
   );
