@@ -4,12 +4,12 @@ import { admin } from '@/lib/firebase-admin';
 // Function to "delete" (archive) a user
 export async function DELETE(
     request: Request, 
-    context: { params: { uid: string } } 
+    { params }: { params: { uid: string } } // <-- THE SIGNATURE IS UPDATED HERE
 ) {
-  const userUidToDelete = context.params.uid;
+  const userUidToDelete = params.uid; // <-- We now get 'uid' from 'params'
 
   try {
-    // Verify admin privileges (important for security)
+    // Verify admin privileges
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!idToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,7 +25,7 @@ export async function DELETE(
       status: 'archived',
     });
     
-    // 2. Disable the user in Firebase Auth so they cannot log in
+    // 2. Disable the user in Firebase Auth
     await admin.auth().updateUser(userUidToDelete, { disabled: true });
 
     return NextResponse.json({ message: 'User archived successfully' });
@@ -38,9 +38,9 @@ export async function DELETE(
 // Function to "restore" a user
 export async function PUT(
     request: Request, 
-    context: { params: { uid: string } }
+    { params }: { params: { uid: string } } // <-- THE SIGNATURE IS UPDATED HERE
 ) {
-  const userUidToRestore = context.params.uid;
+  const userUidToRestore = params.uid; // <-- We now get 'uid' from 'params'
 
   try {
     // Verify admin privileges
@@ -59,7 +59,7 @@ export async function PUT(
       status: 'active',
     });
 
-    // 2. Enable the user in Firebase Auth so they can log in again
+    // 2. Enable the user in Firebase Auth
     await admin.auth().updateUser(userUidToRestore, { disabled: false });
 
     return NextResponse.json({ message: 'User restored successfully' });
