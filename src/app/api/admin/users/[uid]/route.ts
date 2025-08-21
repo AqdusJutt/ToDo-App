@@ -1,32 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server'; // <-- UPDATED IMPORT
+import { NextRequest, NextResponse } from 'next/server';
 import { admin } from '@/lib/firebase-admin';
 
 // Function to "delete" (archive) a user
 export async function DELETE(
-    request: NextRequest, // <-- UPDATED TYPE
-    { params }: { params: { uid: string } }
+  request: NextRequest,
+  context: { params: { uid: string } }   // <-- FIXED
 ) {
-  const userUidToDelete = params.uid;
+  const { uid } = context.params;  // <-- destructure inside ✅
 
   try {
-    // Verify admin privileges
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!idToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     if (adminUserDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Update Firestore document to archived
-    await admin.firestore().collection('users').doc(userUidToDelete).update({
+    await admin.firestore().collection('users').doc(uid).update({
       status: 'archived',
     });
-    
-    // Disable the user in Firebase Auth
-    await admin.auth().updateUser(userUidToDelete, { disabled: true });
+
+    await admin.auth().updateUser(uid, { disabled: true });
 
     return NextResponse.json({ message: 'User archived successfully' });
   } catch (error) {
@@ -37,30 +35,28 @@ export async function DELETE(
 
 // Function to "restore" a user
 export async function PUT(
-    request: NextRequest, // <-- UPDATED TYPE
-    { params }: { params: { uid: string } }
+  request: NextRequest,
+  context: { params: { uid: string } }   // <-- FIXED
 ) {
-  const userUidToRestore = params.uid;
+  const { uid } = context.params;  // <-- destructure inside ✅
 
   try {
-    // Verify admin privileges
     const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!idToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
     if (adminUserDoc.data()?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Update Firestore document to active
-    await admin.firestore().collection('users').doc(userUidToRestore).update({
+    await admin.firestore().collection('users').doc(uid).update({
       status: 'active',
     });
 
-    // Enable the user in Firebase Auth
-    await admin.auth().updateUser(userUidToRestore, { disabled: false });
+    await admin.auth().updateUser(uid, { disabled: false });
 
     return NextResponse.json({ message: 'User restored successfully' });
   } catch (error) {
