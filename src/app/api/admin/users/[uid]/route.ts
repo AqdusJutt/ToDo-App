@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'; // <-- UPDATED IMPORT
 import { admin } from '@/lib/firebase-admin';
 
 // Function to "delete" (archive) a user
 export async function DELETE(
-    request: Request, 
-    { params }: { params: { uid: string } } // <-- THE SIGNATURE IS UPDATED HERE
+    request: NextRequest, // <-- UPDATED TYPE
+    { params }: { params: { uid: string } }
 ) {
-  const userUidToDelete = params.uid; // <-- We now get 'uid' from 'params'
+  const userUidToDelete = params.uid;
 
   try {
     // Verify admin privileges
@@ -20,12 +20,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 1. Update Firestore document to archived
+    // Update Firestore document to archived
     await admin.firestore().collection('users').doc(userUidToDelete).update({
       status: 'archived',
     });
     
-    // 2. Disable the user in Firebase Auth
+    // Disable the user in Firebase Auth
     await admin.auth().updateUser(userUidToDelete, { disabled: true });
 
     return NextResponse.json({ message: 'User archived successfully' });
@@ -37,10 +37,10 @@ export async function DELETE(
 
 // Function to "restore" a user
 export async function PUT(
-    request: Request, 
-    { params }: { params: { uid: string } } // <-- THE SIGNATURE IS UPDATED HERE
+    request: NextRequest, // <-- UPDATED TYPE
+    { params }: { params: { uid: string } }
 ) {
-  const userUidToRestore = params.uid; // <-- We now get 'uid' from 'params'
+  const userUidToRestore = params.uid;
 
   try {
     // Verify admin privileges
@@ -54,12 +54,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 1. Update Firestore document to active
+    // Update Firestore document to active
     await admin.firestore().collection('users').doc(userUidToRestore).update({
       status: 'active',
     });
 
-    // 2. Enable the user in Firebase Auth
+    // Enable the user in Firebase Auth
     await admin.auth().updateUser(userUidToRestore, { disabled: false });
 
     return NextResponse.json({ message: 'User restored successfully' });
