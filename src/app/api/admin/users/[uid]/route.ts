@@ -1,74 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { admin } from "@/lib/firebase-admin";
+import { NextResponse } from 'next/server';
+import { admin } from '@/lib/firebase-admin';
 
-type Context = {
-  params: { uid: string };
-};
-
-// DELETE: Archive user
-export async function DELETE(req: NextRequest, context: Context) {
-  const { uid } = context.params;
+export async function DELETE(
+    request: Request, 
+    context: { params: { uid: string } }
+) {
+  const userUidToDelete = context.params.uid;
 
   try {
-    const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
+    const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!idToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const adminUserDoc = await admin
-      .firestore()
-      .collection("users")
-      .doc(decodedToken.uid)
-      .get();
-
-    if (adminUserDoc.data()?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+    if (adminUserDoc.data()?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await admin.firestore().collection("users").doc(uid).update({
-      status: "archived",
+    await admin.firestore().collection('users').doc(userUidToDelete).update({
+      status: 'archived',
     });
 
-    await admin.auth().updateUser(uid, { disabled: true });
+    await admin.auth().updateUser(userUidToDelete, { disabled: true });
 
-    return NextResponse.json({ message: "User archived successfully" });
+    return NextResponse.json({ message: 'User archived successfully' });
   } catch (error) {
-    console.error("Error archiving user:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error('Error archiving user:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// PUT: Restore user
-export async function PUT(req: NextRequest, context: Context) {
-  const { uid } = context.params;
+export async function PUT(
+    request: Request, 
+    context: { params: { uid: string } }
+) {
+  const userUidToRestore = context.params.uid;
 
   try {
-    const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
+    const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
     if (!idToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const adminUserDoc = await admin
-      .firestore()
-      .collection("users")
-      .doc(decodedToken.uid)
-      .get();
-
-    if (adminUserDoc.data()?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const adminUserDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+    if (adminUserDoc.data()?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await admin.firestore().collection("users").doc(uid).update({
-      status: "active",
+    await admin.firestore().collection('users').doc(userUidToRestore).update({
+      status: 'active',
     });
 
-    await admin.auth().updateUser(uid, { disabled: false });
+    await admin.auth().updateUser(userUidToRestore, { disabled: false });
 
-    return NextResponse.json({ message: "User restored successfully" });
+    return NextResponse.json({ message: 'User restored successfully' });
   } catch (error) {
-    console.error("Error restoring user:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error('Error restoring user:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
