@@ -1,42 +1,74 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { NextRequest, NextResponse } from "next/server";
+import { admin } from "@/lib/firebase-admin";
 
-// GET one user
-export async function GET(
-  request: Request,
-  { params }: { params: { uid: string } }
-) {
-  const { uid } = params;
-  const snap = await getDoc(doc(db, "users", uid));
+type Context = {
+  params: { uid: string };
+};
 
-  if (!snap.exists()) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+// DELETE: Archive user
+export async function DELETE(req: NextRequest, context: Context) {
+  const { uid } = context.params;
+
+  try {
+    const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
+    if (!idToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const adminUserDoc = await admin
+      .firestore()
+      .collection("users")
+      .doc(decodedToken.uid)
+      .get();
+
+    if (adminUserDoc.data()?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await admin.firestore().collection("users").doc(uid).update({
+      status: "archived",
+    });
+
+    await admin.auth().updateUser(uid, { disabled: true });
+
+    return NextResponse.json({ message: "User archived successfully" });
+  } catch (error) {
+    console.error("Error archiving user:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-
-  return NextResponse.json({ uid, ...snap.data() });
 }
 
-// PUT update user
-export async function PUT(
-  request: Request,
-  { params }: { params: { uid: string } }
-) {
-  const { uid } = params;
-  const data = await request.json();
+// PUT: Restore user
+export async function PUT(req: NextRequest, context: Context) {
+  const { uid } = context.params;
 
-  await updateDoc(doc(db, "users", uid), data);
+  try {
+    const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
+    if (!idToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  return NextResponse.json({ message: `User ${uid} updated` });
-}
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const adminUserDoc = await admin
+      .firestore()
+      .collection("users")
+      .doc(decodedToken.uid)
+      .get();
 
-// DELETE user
-export async function DELETE(
-  request: Request,
-  { params }: { params: { uid: string } }
-) {
-  const { uid } = params;
-  await deleteDoc(doc(db, "users", uid));
+    if (adminUserDoc.data()?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-  return NextResponse.json({ message: `User ${uid} deleted` });
+    await admin.firestore().collection("users").doc(uid).update({
+      status: "active",
+    });
+
+    await admin.auth().updateUser(uid, { disabled: false });
+
+    return NextResponse.json({ message: "User restored successfully" });
+  } catch (error) {
+    console.error("Error restoring user:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
