@@ -14,7 +14,13 @@ interface NewTask {
   title: string; description: string; deadline: string; assignedToUid: string;
 }
 interface AssignedTask {
-  id: string; title: string; assignedToName: string; deadline: string; status: string;
+  id: string;
+  title: string;
+  description?: string | null;
+  assignedToName: string | null;
+  deadline: string | null;
+  status: string; // 'Completed' | 'Pending' | 'In progress'
+  completed?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -104,9 +110,21 @@ export default function AdminDashboard() {
 
     try {
       await addDoc(collection(db, "tasks"), {
-        title: newTask.title, description: newTask.description, deadline: new Date(newTask.deadline),
-        status: "Pending", assignedToUid: selectedUser.uid, assignedToName: selectedUser.displayName,
-        assignedByUid: user?.uid, createdAt: serverTimestamp()
+        title: newTask.title,
+        description: newTask.description,
+        // legacy admin fields used by /api/admin/tasks and table
+        deadline: new Date(newTask.deadline),
+        status: "Pending",
+        assignedToUid: selectedUser.uid,
+        assignedToName: selectedUser.displayName,
+        assignedByUid: user?.uid,
+        // normalized fields used by user dashboard and shared lib
+        assigneeUid: selectedUser.uid,
+        assigneeEmail: selectedUser.email ?? null,
+        dueAt: new Date(newTask.deadline),
+        createdBy: user?.uid ?? "unknown",
+        adminAssigned: true,
+        createdAt: serverTimestamp(),
       });
       setAssignmentStatus({ message: 'Task assigned successfully!', error: false });
       fetchAssignedTasks(); // Refresh the list
@@ -202,7 +220,7 @@ export default function AdminDashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -211,10 +229,21 @@ export default function AdminDashboard() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {assignedTasks.length > 0 ? assignedTasks.map((task) => (
                       <tr key={task.id}>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{task.title}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{task.assignedToName}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{task.deadline}</td>
-                        <td className="px-6 py-4 text-sm"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${task.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{task.status}</span></td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{task.title}</span>
+                            {task.description ? (
+                              <span className="text-gray-500 text-xs truncate max-w-[32ch]">{task.description}</span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">{task.assignedToName || 'Unknown User'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">{task.deadline || 'No deadline'}</td>
+                        <td className="px-6 py-4 text-sm">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${task.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {task.completed ? 'Completed' : task.status}
+                          </span>
+                        </td>
                       </tr>
                     )) : (<tr><td colSpan={4} className="text-center py-8 text-gray-500">No tasks assigned yet.</td></tr>)}
                   </tbody>

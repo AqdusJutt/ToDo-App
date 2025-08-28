@@ -20,22 +20,116 @@ export async function GET(request: Request) {
       .get();
     
     // 3. Format the data to be sent to the frontend
-    const tasks = tasksSnapshot.docs.map(doc => {
-        const data = doc.data();
+    const tasks = await Promise.all(tasksSnapshot.docs.map(async (doc) => {
+        const data = doc.data() as any;
+        const statusRaw = data.status;
+        const completed = statusRaw === 'done' || statusRaw === 'Completed';
+        
+        // Handle both dueAt (new) and deadline (legacy) fields
+        let deadline = null;
+        if (data.dueAt) {
+          deadline = data.dueAt.toDate ? data.dueAt.toDate() : new Date(data.dueAt);
+        } else if (data.deadline) {
+          deadline = data.deadline.toDate ? data.deadline.toDate() : new Date(data.deadline);
+        }
+        
+        // Get user name if we have assigneeUid
+        let assignedToName = data.assignedToName || 'Unknown User';
+        if (data.assigneeUid && !data.assignedToName) {
+          try {
+            const userDoc = await admin.firestore().collection('users').doc(data.assigneeUid).get();
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              assignedToName = userData?.name || userData?.displayName || userData?.email || 'Unknown User';
+            }
+          } catch (error) {
+            console.warn('Could not fetch user name for task:', doc.id, error);
+            assignedToName = 'Unknown User';
+          }
+        }
+        
         return {
             id: doc.id,
             title: data.title,
-            status: data.status,
-            assignedToName: data.assignedToName,
-            // Convert Firestore Timestamp to a readable date string
-            deadline: new Date(data.deadline._seconds * 1000).toLocaleDateString(),
+            description: data.description ?? null,
+            status: completed ? 'Completed' : (statusRaw === 'in_progress' ? 'In progress' : 'Pending'),
+            completed,
+            assignedToName: assignedToName,
+            deadline: deadline ? deadline.toLocaleDateString() : 'No deadline',
         };
-    });
+    }));
 
     return NextResponse.json(tasks);
 
   } catch (error) {
     console.error('Error fetching assigned tasks:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // 1. Security Check: Verify the user making the request is an admin
+    const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+    if (!idToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+    if (userDoc.data()?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 2. Get the task data from the request body
+    const body = await request.json();
+    const { title, description, deadline, assigneeUid, status, createdBy } = body;
+
+    if (!title) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
+
+    // 3. Create the task using Admin SDK (bypasses Security Rules)
+    const taskData: any = {
+      title,
+      description: description || null,
+      // Primary field for new system
+      assigneeUid: assigneeUid || null,
+      // Legacy field for backward compatibility
+      assignedToUid: assigneeUid || null,
+      assignedToName: null, // Will be populated below
+      status: status || 'todo',
+      createdBy: createdBy || decodedToken.uid,
+      adminAssigned: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      // Add deadline field
+      dueAt: deadline ? admin.firestore.Timestamp.fromDate(new Date(deadline)) : null,
+      // Legacy deadline field for backward compatibility
+      deadline: deadline ? admin.firestore.Timestamp.fromDate(new Date(deadline)) : null,
+    };
+
+    // If we have assigneeUid, try to get the user's name
+    if (assigneeUid) {
+      try {
+        const userDoc = await admin.firestore().collection('users').doc(assigneeUid).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          taskData.assignedToName = userData?.name || userData?.displayName || userData?.email || 'Unknown User';
+        }
+      } catch (error) {
+        console.warn('Could not fetch user name for assignee:', error);
+        taskData.assignedToName = 'Unknown User';
+      }
+    }
+
+    const docRef = await admin.firestore().collection('tasks').add(taskData);
+
+    return NextResponse.json({ 
+      id: docRef.id, 
+      message: 'Task created successfully' 
+    });
+
+  } catch (error) {
+    console.error('Error creating task:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

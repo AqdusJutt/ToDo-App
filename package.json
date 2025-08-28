@@ -10,20 +10,26 @@
   },
   "dependencies": {
     "firebase": "^10.12.2",
-    "firebase-admin": "^12.1.0",
-    "next": "14.2.4",
+    "firebase-admin": "^12.7.0",
+    "flowbite": "^2.5.2",
+    "next": "^14.2.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "autoprefixer": "^10.4.19",
+    "autoprefixer": "^10.4.21",
+    "daisyui": "^4.12.24",
     "eslint": "^8",
     "eslint-config-next": "14.2.4",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
+    "flowbite-react": "^0.12.7",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
 }

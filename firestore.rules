@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /tasks/{taskId} {
+      // Read: allow access to tasks where user is assignee OR admin
+      allow read: if isSignedIn() && (
+        // User can read tasks assigned to them (both field names)
+        resource.data.assigneeUid == request.auth.uid ||
+        resource.data.assignedToUid == request.auth.uid ||
+        // Admin can read all tasks
+        isAdmin() ||
+        // Allow reading tasks created by the user
+        resource.data.createdBy == request.auth.uid
+      );
+
+      // Create: allow users to create self-tasks, admin to create admin-assigned tasks
+      allow create: if isSignedIn() && (
+        // User creating self-task
+        (request.resource.data.assigneeUid == request.auth.uid &&
+         request.resource.data.createdBy == request.auth.uid &&
+         request.resource.data.adminAssigned != true) ||
+        // Admin creating admin-assigned task
+        (request.resource.data.adminAssigned == true && isAdmin())
+      );
+
+      // Update: allow assignee to update limited fields, admin to update anything
+      allow update: if isSignedIn() && (
+        // Assignee can update status and description
+        ((resource.data.assigneeUid == request.auth.uid ||
+          resource.data.assignedToUid == request.auth.uid) &&
+         request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'description', 'dueAt', 'updatedAt'])) ||
+        // Admin can update anything
+        isAdmin() ||
+        // Creator can update their own tasks
+        resource.data.createdBy == request.auth.uid
+      );
+
+      // Delete: allow admin or creator to delete
+      allow delete: if isAdmin() || 
+        (isSignedIn() && (
+          resource.data.createdBy == request.auth.uid ||
+          resource.data.assigneeUid == request.auth.uid ||
+          resource.data.assignedToUid == request.auth.uid
+        ));
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && (uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && uid == request.auth.uid;
+      allow update: if isAdmin() ||
+        (uid == request.auth.uid &&
+         request.resource.data.diff(resource.data).changedKeys().hasOnly(['name', 'email']));
+    }
+  }
+}
