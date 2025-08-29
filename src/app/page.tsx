@@ -129,7 +129,7 @@ export default function Home() {
               </button>
             </li>
             <li className="hidden md:block"><a href="#" className="text-white hover:text-red-400 transition-colors">About Us</a></li>
-            <li className="hidden md:block"><a href="#" className="text-white hover:text-red-400 transition-colors">Contact</a></li>
+            <li className="hidden md:block"><Link href="/contact" className="text-white hover:text-red-400 transition-colors">Contact</Link></li>
           </ul>
         </nav>
       </header>
@@ -245,12 +245,16 @@ export default function Home() {
         <div className="flex items-center flex-col sm:flex-row gap-4">
            <span>© 2025 Key. All Rights Reserved | Design By STAUMZ</span>
             <div className="flex space-x-3">
-              {/* Placeholder Social Icons */}
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="https://www.facebook.com/profile.php?id=100011540072335" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.008 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.953H10.5a2.607 2.607 0 00-2.607 2.607V8.05h3.915L11.72 11.01h-3.915v5.625c3.823-.604 6.75-3.934 6.75-7.951z"/></svg>
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="https://x.com/AqD_us" target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="hover:text-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0016 3.542a6.658 6.658 0 01-1.889.518 3.301 3.301 0 001.447-1.817 6.533 6.533 0 01-2.087.793A3.286 3.286 0 007.875 6.03a9.325 9.325 0 01-6.767-3.429 3.289 3.289 0 001.025 4.305A3.29 3.29 0 01.879 8.02c.003.03.006.06.009.091c0 3.341 2.376 6.102 5.475 6.741A7.87 7.87 0 01.64 15c-.105 0-.207-.013-.309-.025A9.302 9.302 0 005.026 15z"/></svg>
+              </a>
+              <a href="https://www.instagram.com/aqdusjutt/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm0 2h10c1.66 0 3 1.34 3 3v10c0 1.66-1.34 3-3 3H7c-1.66 0-3-1.34-3-3V7c0-1.66 1.34-3 3-3zm5 3a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6zm5.5-2a1 1 0 100 2 1 1 0 000-2z"/>
+                </svg>
               </a>
             </div>
         </div>

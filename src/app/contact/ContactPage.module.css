@@ -1,0 +1,107 @@
+/* src/app/contact/ContactPage.module.css */
+
+.mainBackground {
+  background-image: url('/background.png');
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.container {
+  display: flex;
+  max-width: 1000px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.infoPanel {
+  flex: 1;
+  background-image: url('/window.svg');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.infoCard {
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.icon {
+  font-size: 1.5rem;
+}
+
+.formPanel {
+  flex: 1;
+  padding: 3rem;
+  background-color: #f9fafb;
+}
+
+.formPanel h2 {
+  margin-bottom: 2rem;
+  font-size: 1.75rem;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.formGroup input,
+.formGroup textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 0.8rem;
+  background-color: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submitBtn:hover {
+  background-color: #34495e;
+}
+
+.statusMessage {
+  margin-top: 1rem;
+  text-align: center;
+  font-weight: 500;
+}
