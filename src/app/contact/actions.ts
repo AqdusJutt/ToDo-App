@@ -24,7 +24,7 @@ export async function sendContactEmail(formData: FormData) {
       from: 'Contact Form <onboarding@resend.dev>',
       to: 'aqdussiddique@gmail.com',
       subject: `New message from ${fullName} via Contact Form`,
-      reply_to: email,
+      replyTo: email,
       html: `
         <h2>New Contact Form Submission</h2>
         <p><strong>Name:</strong> ${fullName}</p>
