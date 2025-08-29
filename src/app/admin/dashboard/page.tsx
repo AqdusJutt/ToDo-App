@@ -18,6 +18,7 @@ interface AssignedTask {
   title: string;
   description?: string | null;
   assignedToName: string | null;
+  assignedToEmail: string | null;
   deadline: string | null;
   status: string; // 'Completed' | 'Pending' | 'In progress'
   completed?: boolean;
@@ -204,7 +205,19 @@ export default function AdminDashboard() {
                           {filter === 'active' ? ( <button onClick={() => handleUserAction(u.uid, 'archive')} className="text-red-600 hover:text-red-900 font-medium">Archive</button> ) : ( <button onClick={() => handleUserAction(u.uid, 'restore')} className="text-green-600 hover:text-green-900 font-medium">Restore</button> )}
                         </td>
                       </tr>
-                    )) : (<tr><td colSpan={4} className="text-center py-8 text-gray-500">No users found.</td></tr>)}
+                    )) : (
+                      <tr>
+                        <td colSpan={4} className="text-center py-12 text-gray-500">
+                          <div className="flex flex-col items-center">
+                            <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                            </svg>
+                            <span className="text-lg font-medium">No users found</span>
+                            <span className="text-sm">Users will appear here once they register</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -221,8 +234,8 @@ export default function AdminDashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     </tr>
                   </thead>
@@ -237,15 +250,40 @@ export default function AdminDashboard() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{task.assignedToName || 'Unknown User'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{task.deadline || 'No deadline'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-900">{task.assignedToName || 'Unknown User'}</span>
+                            <span className="text-xs text-blue-600 font-mono">{task.assignedToEmail || 'No email'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            task.deadline === 'No deadline' || task.deadline === 'Invalid date' 
+                              ? 'bg-gray-100 text-gray-600' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {task.deadline || 'No deadline'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 text-sm">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${task.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                             {task.completed ? 'Completed' : task.status}
                           </span>
                         </td>
                       </tr>
-                    )) : (<tr><td colSpan={4} className="text-center py-8 text-gray-500">No tasks assigned yet.</td></tr>)}
+                    )) : (
+                      <tr>
+                        <td colSpan={4} className="text-center py-12 text-gray-500">
+                          <div className="flex flex-col items-center">
+                            <svg className="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span className="text-lg font-medium">No tasks assigned yet</span>
+                            <span className="text-sm">Tasks you assign will appear here</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext"; // Re-enabled this import
 
 export default function Home() {
@@ -212,7 +213,7 @@ export default function Home() {
             </button>
 
             <div className="text-right text-sm mt-4">
-              <a href="#" className="hover:underline text-red-500">Forgot Password?</a>
+              <Link href="/forgot-password" className="hover:underline text-red-500">Forgot Password?</Link>
             </div>
 
              <div className="mt-6 text-center">

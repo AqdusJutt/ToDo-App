@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "firebase": "^10.12.2",
     "firebase-admin": "^12.7.0",
     "flowbite": "^2.5.2",

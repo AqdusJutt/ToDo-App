@@ -25,26 +25,57 @@ export async function GET(request: Request) {
         const statusRaw = data.status;
         const completed = statusRaw === 'done' || statusRaw === 'Completed';
         
-        // Handle both dueAt (new) and deadline (legacy) fields
+        // Handle both dueAt (new) and deadline (legacy) fields with proper error handling
         let deadline = null;
-        if (data.dueAt) {
-          deadline = data.dueAt.toDate ? data.dueAt.toDate() : new Date(data.dueAt);
-        } else if (data.deadline) {
-          deadline = data.deadline.toDate ? data.deadline.toDate() : new Date(data.deadline);
+        let deadlineFormatted = 'No deadline';
+        
+        try {
+          if (data.dueAt) {
+            if (data.dueAt.toDate && typeof data.dueAt.toDate === 'function') {
+              deadline = data.dueAt.toDate();
+            } else if (data.dueAt instanceof Date) {
+              deadline = data.dueAt;
+            } else {
+              deadline = new Date(data.dueAt);
+            }
+          } else if (data.deadline) {
+            if (data.deadline.toDate && typeof data.deadline.toDate === 'function') {
+              deadline = data.deadline.toDate();
+            } else if (data.deadline instanceof Date) {
+              deadline = data.deadline;
+            } else {
+              deadline = new Date(data.deadline);
+            }
+          }
+          
+          if (deadline && !isNaN(deadline.getTime())) {
+            deadlineFormatted = deadline.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            });
+          }
+        } catch (error) {
+          console.warn('Error processing deadline for task:', doc.id, error);
+          deadlineFormatted = 'Invalid date';
         }
         
-        // Get user name if we have assigneeUid
+        // Get user name with improved error handling
         let assignedToName = data.assignedToName || 'Unknown User';
+        let assignedToEmail = data.assigneeEmail || 'No email';
+        
         if (data.assigneeUid && !data.assignedToName) {
           try {
             const userDoc = await admin.firestore().collection('users').doc(data.assigneeUid).get();
             if (userDoc.exists) {
               const userData = userDoc.data();
               assignedToName = userData?.name || userData?.displayName || userData?.email || 'Unknown User';
+              assignedToEmail = userData?.email || 'No email';
             }
           } catch (error) {
             console.warn('Could not fetch user name for task:', doc.id, error);
             assignedToName = 'Unknown User';
+            assignedToEmail = 'No email';
           }
         }
         
@@ -55,7 +86,8 @@ export async function GET(request: Request) {
             status: completed ? 'Completed' : (statusRaw === 'in_progress' ? 'In progress' : 'Pending'),
             completed,
             assignedToName: assignedToName,
-            deadline: deadline ? deadline.toLocaleDateString() : 'No deadline',
+            assignedToEmail: assignedToEmail,
+            deadline: deadlineFormatted,
         };
     }));
 
