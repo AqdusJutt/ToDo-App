@@ -212,9 +212,11 @@ export default function Home() {
               {loading ? (isSignUp ? "Creating Account..." : "Logging In...") : (isSignUp ? "Create Account" : "Login")}
             </button>
 
-            <div className="text-right text-sm mt-4">
-              <Link href="/forgot-password" className="hover:underline text-red-500">Forgot Password?</Link>
-            </div>
+            {!isSignUp && (
+              <div className="text-right text-sm mt-4">
+                <Link href="/forgot-password" className="hover:underline text-red-500">Forgot Password?</Link>
+              </div>
+            )}
 
              <div className="mt-6 text-center">
               <a href="#" className="text-gray-500 hover:underline text-sm">NEED HELP?</a>

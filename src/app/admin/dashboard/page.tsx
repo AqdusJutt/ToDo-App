@@ -296,15 +296,107 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
             <h2 className="text-2xl font-bold mb-6">Assign a New Task</h2>
-            <form onSubmit={handleAssignTask}>
-              <div className="mb-4"><label className="block text-gray-700 font-semibold mb-2" htmlFor="title">Task Title</label><input type="text" name="title" id="title" value={newTask.title} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg" required /></div>
-              <div className="mb-4"><label className="block text-gray-700 font-semibold mb-2" htmlFor="description">Description</label><textarea name="description" id="description" value={newTask.description} onChange={handleInputChange} rows={3} className="w-full px-3 py-2 border rounded-lg"></textarea></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div><label className="block text-gray-700 font-semibold mb-2" htmlFor="assignedToUid">Assign To</label><select name="assignedToUid" id="assignedToUid" value={newTask.assignedToUid} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg" required><option value="" disabled>Select a user</option>{users.filter(u => filter === 'active').map(u => (<option key={u.uid} value={u.uid}>{u.displayName}</option>))}</select></div>
-                <div><label className="block text-gray-700 font-semibold mb-2" htmlFor="deadline">Deadline</label><input type="date" name="deadline" id="deadline" value={newTask.deadline} onChange={handleInputChange} className="w-full px-3 py-2 border rounded-lg" required /></div>
+            <form onSubmit={handleAssignTask} className="space-y-6">
+              {/* Task Title */}
+              <div className="form-field">
+                <label className="block text-gray-700 font-semibold mb-2" htmlFor="title">
+                  Task Title
+                </label>
+                <input 
+                  type="text" 
+                  name="title" 
+                  id="title" 
+                  value={newTask.title} 
+                  onChange={handleInputChange} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors" 
+                  placeholder="Enter task title"
+                  required 
+                />
               </div>
-              {assignmentStatus.message && (<p className={`text-sm mb-4 ${assignmentStatus.error ? 'text-red-500' : 'text-green-500'}`}>{assignmentStatus.message}</p>)}
-              <div className="flex justify-end gap-4"><button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button><button type="submit" className="px-4 py-2 bg-red-500 text-white rounded-lg">Assign Task</button></div>
+
+              {/* Description */}
+              <div className="form-field">
+                <label className="block text-gray-700 font-semibold mb-2" htmlFor="description">
+                  Description
+                </label>
+                <textarea 
+                  name="description" 
+                  id="description" 
+                  value={newTask.description} 
+                  onChange={handleInputChange} 
+                  rows={3} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors resize-none"
+                  placeholder="Enter task description (optional)"
+                />
+              </div>
+
+              {/* Assign To and Deadline Row */}
+              <div className="form-row">
+                <div className="form-field">
+                  <label className="block text-gray-700 font-semibold mb-2" htmlFor="assignedToUid">
+                    Assign To
+                  </label>
+                  <select 
+                    name="assignedToUid" 
+                    id="assignedToUid" 
+                    value={newTask.assignedToUid} 
+                    onChange={handleInputChange} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+                    required
+                  >
+                    <option value="" disabled>Select a user</option>
+                    {users.filter(u => filter === 'active').map(u => (
+                      <option key={u.uid} value={u.uid}>{u.displayName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label className="block text-gray-700 font-semibold mb-2" htmlFor="deadline">
+                    Deadline
+                  </label>
+                  <input 
+                    type="date" 
+                    name="deadline" 
+                    id="deadline" 
+                    value={newTask.deadline} 
+                    onChange={handleInputChange} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+                    required 
+                  />
+                </div>
+              </div>
+
+              {/* Status Messages */}
+              {assignmentStatus.message && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  assignmentStatus.error 
+                    ? 'bg-red-100 border border-red-300 text-red-700' 
+                    : 'bg-green-100 border border-green-300 text-green-700'
+                }`}>
+                  {assignmentStatus.message}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-4 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-6 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Assign Task
+                </button>
+              </div>
             </form>
           </div>
         </div>
