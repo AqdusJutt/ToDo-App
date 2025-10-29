@@ -62,7 +62,9 @@ export default function UserDashboard() {
     }
   };
 
-  return ( <div className="mb-6 flex items-center justify-between">
+  return (
+    <DashboardShell>
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <div className="inline-flex rounded-lg overflow-hidden border border-black/5 dark:border-white/10">
           <button onClick={() => setActiveTab("my")} className={`px-3 py-1.5 text-sm ${activeTab === "my" ? "bg-gray-100 dark:bg-white/10" : ""}`}>My Tasks</button>
