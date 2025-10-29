@@ -21,7 +21,7 @@ export default function UserDashboard() {
   const [newTitle, setNewTitle] = React.useState("");
   const [newDesc, setNewDesc] = React.useState("");
 
-  // 🔴 listen to self-created tasks
+  //  listen to self-created tasks
   React.useEffect(() => {
     if (!user) return;
     setLoadingSelf(true);
@@ -32,7 +32,7 @@ export default function UserDashboard() {
     return () => unsub?.();
   }, [user]);
 
-  // 🔴 listen to admin-assigned tasks
+  //  listen to admin-assigned tasks
   React.useEffect(() => {
     if (!user) return;
     setLoadingAssigned(true);
@@ -62,9 +62,7 @@ export default function UserDashboard() {
     }
   };
 
-  return (
-    <DashboardShell>
-      <div className="mb-6 flex items-center justify-between">
+  return ( <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <div className="inline-flex rounded-lg overflow-hidden border border-black/5 dark:border-white/10">
           <button onClick={() => setActiveTab("my")} className={`px-3 py-1.5 text-sm ${activeTab === "my" ? "bg-gray-100 dark:bg-white/10" : ""}`}>My Tasks</button>
